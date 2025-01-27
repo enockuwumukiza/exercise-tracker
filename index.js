@@ -131,9 +131,9 @@ app.get('/api/users/:_id/logs', async (req, res) => {
     username: user.username,
     count: exercises.length,
     _id: user._id,
-    from,
-    to,
-    limit,
+    from:new Date(from),
+    to:new Date(to),
+    limit:parseInt(limit),
     log: exercises.map(ex => ({
       description: ex.description,
       duration: ex.duration,
