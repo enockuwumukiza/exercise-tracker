@@ -103,42 +103,54 @@ app.get('/api/users/:_id/logs', async (req, res) => {
   const query = { username: user.username };
 
   // Add date filters if provided
-  if (from || to) {
-    query.date = {};
-    if (from) {
-      const fromDate = new Date(from);
+
+  let dateObj = {};
+
+  if(from){
+    
+    const fromDate = new Date(from);
       if (isNaN(fromDate.getTime())) {
         return res.status(400).json({ error: 'Invalid "from" date format. Use yyyy-mm-dd.' });
       }
-      query.date.$gte = fromDate.toDateString();
+      dateObj["$gte"] = fromDate;
+  }
+  if(to){
+    const toDate = new Date(to);
+    if (isNaN(toDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid "to" date format. Use yyyy-mm-dd.' });
     }
-    if (to) {
-      const toDate = new Date(to);
-      if (isNaN(toDate.getTime())) {
-        return res.status(400).json({ error: 'Invalid "to" date format. Use yyyy-mm-dd.' });
-      }
-      query.date.$lte = toDate.toDateString();
-    }
+    dateObj["$lte"] = toDate;
+  }
+
+  let filter = {
+    username:user?.username
+  }
+
+  if (from || to) {
+
+    filter.date = dateObj;
+    
   }
 
   // Fetch exercises with the limit applied
-  const exercises = await Exercise.find(query)
+  const exercises = await Exercise.find(filter)
     .limit(parseInt(limit) || 100) // Default to 100 if no limit is provided
     .sort({ date: 1 }); // Sort by date in ascending order
 
   // Return the log with the user info and count
+
+  const log = exercises.map(ex => ({
+    description: ex.description,
+    duration: ex.duration,
+    date: ex.date,
+    
+  }));
+
   res.json({
     username: user.username,
     count: exercises.length,
     _id: user._id,
-    from:new Date(from),
-    to:new Date(to),
-    limit:parseInt(limit),
-    log: exercises.map(ex => ({
-      description: ex.description,
-      duration: ex.duration,
-      date: ex.date,
-    })),
+    log: log
   });
 });
 
@@ -146,5 +158,8 @@ app.get('/api/users/:_id/logs', async (req, res) => {
 const listener = app.listen(port, () => {
   console.log('Your app is listening on port ' + listener.address().port);
 });
+
+
+
 
 
