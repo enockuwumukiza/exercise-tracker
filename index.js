@@ -88,64 +88,60 @@ app.get('/api/users', async (req, res) => {
 });
 
 
-app.get("/api/users/:_id/logs", async (req, res) => {
+// GET /api/users/:_id/logs - Get exercise logs for a user
+app.get('/api/users/:_id/logs', async (req, res) => {
   const { _id } = req.params;
   const { from, to, limit } = req.query;
 
-  try {
-    // Find user by ID
-    const user = await User.findById(_id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    // Build the query
-    const query = { username: user.username };
-
-    // Handle `from` and `to` filters
-    if (from || to) {
-      query.date = {};
-      if (from) {
-        const fromDate = new Date(from);
-        if (isNaN(fromDate.getTime())) {
-          return res
-            .status(400)
-            .json({ error: "Invalid 'from' date format. Use yyyy-mm-dd." });
-        }
-        query.date.$gte = fromDate.toISOString().split("T")[0]; // ISO string date
-      }
-      if (to) {
-        const toDate = new Date(to);
-        if (isNaN(toDate.getTime())) {
-          return res
-            .status(400)
-            .json({ error: "Invalid 'to' date format. Use yyyy-mm-dd." });
-        }
-        query.date.$lte = toDate.toISOString().split("T")[0]; // ISO string date
-      }
-    }
-
-    // Fetch exercises, apply limit if provided
-    const exercises = await Exercise.find(query)
-      .sort({ date: 1 }) // Sort by date ascending
-      .limit(parseInt(limit) || 100); // Default limit if not provided
-
-    // Prepare response
-    res.json({
-      username: user.username,
-      count: exercises.length,
-      _id: user._id,
-      log: exercises.map(ex => ({
-        description: ex.description,
-        duration: ex.duration,
-        date: ex.date,
-      })),
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server error" });
+  // Find the user by ID
+  const user = await User.findById(_id);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
   }
+
+  // Build the query for exercises
+  const query = { username: user.username };
+
+  // Add date filters if provided
+  if (from || to) {
+    query.date = {};
+    if (from) {
+      const fromDate = new Date(from);
+      if (isNaN(fromDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid "from" date format. Use yyyy-mm-dd.' });
+      }
+      query.date.$gte = fromDate.toDateString();
+    }
+    if (to) {
+      const toDate = new Date(to);
+      if (isNaN(toDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid "to" date format. Use yyyy-mm-dd.' });
+      }
+      query.date.$lte = toDate.toDateString();
+    }
+  }
+
+  // Fetch exercises with the limit applied
+  const exercises = await Exercise.find(query)
+    .limit(parseInt(limit) || 100) // Default to 100 if no limit is provided
+    .sort({ date: 1 }); // Sort by date in ascending order
+
+  // Return the log with the user info and count
+  res.json({
+    username: user.username,
+    count: exercises.length,
+    _id: user._id,
+    from,
+    to,
+    limit,
+    log: exercises.map(ex => ({
+      description: ex.description,
+      duration: ex.duration,
+      date: ex.date,
+    })),
+  });
 });
+
 
 const listener = app.listen(port, () => {
   console.log('Your app is listening on port ' + listener.address().port);
